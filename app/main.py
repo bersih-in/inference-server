@@ -71,7 +71,7 @@ async def inference_file(file: UploadFile):
         return {"success": False, "error": str(e)}
 
 
-@app.get("/pull-model")
+@app.get("/pull-model", include_in_schema=False)
 async def pull_model(background_tasks: BackgroundTasks):
     if download_in_progress:
         raise HTTPException(
