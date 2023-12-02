@@ -8,6 +8,8 @@ import asyncio
 import httpx
 from dotenv import load_dotenv
 
+from .models.inference import InferenceModel
+
 load_dotenv()
 
 MODEL_PATH = "model/mymodel.h5"
@@ -25,8 +27,10 @@ async def read_root():
     return "Inference Server"
 
 
-@app.post("/inference")
-async def inference(imageUrl: str):
+@app.post("/inference-link")
+async def inference_link(body: InferenceModel):
+    imageUrl = body.imageUrl
+
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(imageUrl)
@@ -36,7 +40,6 @@ async def inference(imageUrl: str):
         image_resize = image.resize((IMAGE_WIDTH, IMAGE_HEIGHT))
 
         image_array = np.asarray(image_resize)
-        print(image_array.shape)
         image_array = image_array.reshape(
             1, IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_CHANNEL)
         image_array = image_array.astype('float32') / 255.0
@@ -57,7 +60,6 @@ async def inference_file(file: UploadFile):
         image_resize = image.resize((IMAGE_WIDTH, IMAGE_HEIGHT))
 
         image_array = np.asarray(image_resize)
-        print(image_array.shape)
         image_array = image_array.reshape(
             1, IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_CHANNEL)
         image_array = image_array.astype('float32') / 255.0
