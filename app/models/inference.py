@@ -5,3 +5,7 @@ from pydantic import BaseModel
 
 class InferenceModel(BaseModel):
     imageUrl: str
+
+class InferenceAsyncModel(BaseModel):
+    imageUrl: str
+    submissionId: int
