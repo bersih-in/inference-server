@@ -8,16 +8,21 @@ import asyncio
 import httpx
 from dotenv import load_dotenv
 from functools import lru_cache
-from typing_extensions import Annotated
 
 from .config import Settings
 from .models.inference import InferenceModel, InferenceAsyncModel
+from typing import Annotated
 
 load_dotenv()
 
 MODEL_PATH = "model/mymodel.h5"
+MODEL2_PATH = "model/model2.h5"
 model = load_model(MODEL_PATH)
+model2 = load_model(MODEL2_PATH)
+
 IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_CHANNEL = model.input_shape[1:]
+IMAGE_WIDTH_2, IMAGE_HEIGHT_2, IMAGE_CHANNEL_2 = model2.input_shape[1:]
+THRESHOLD = 0.5
 
 app = FastAPI()
 
@@ -133,8 +138,24 @@ async def inference_link_task_async(imageUrl: str, submissionId: int):
 
         result = model.predict(image_array)
 
-        if result[0][0] > 0.5:
+        probability = result[0][0]
+
+        urgent = False
+        urgencyProbability = 0.0
+
+        if probability > THRESHOLD:
             result = "VERIFIED"
+            
+            image_resize = image.resize((IMAGE_WIDTH_2, IMAGE_HEIGHT_2))
+            image_array = np.asarray(image_resize)
+            image_array = image_array.reshape(
+                1, IMAGE_WIDTH_2, IMAGE_HEIGHT_2, IMAGE_CHANNEL_2)
+            image_array = image_array.astype('float32') / 255.0
+
+            urgencyProbability = model2.predict(image_array)
+            urgencyProbability = urgencyProbability[0][0]
+            if urgencyProbability > THRESHOLD:
+                urgent = True
         else:
             result = "REJECTED_BY_ML"
 
@@ -144,7 +165,10 @@ async def inference_link_task_async(imageUrl: str, submissionId: int):
                 get_settings().BACKEND_ENDPOINT,
                 json={
                     "submissionId": submissionId,
-                    "status": result
+                    "status": result,
+                    "probability": float(probability),
+                    "urgent": urgent,
+                    "urgencyProbability": float(urgencyProbability)
                 }
             )
             print(response.text)
